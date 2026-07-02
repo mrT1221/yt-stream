@@ -3,12 +3,12 @@ name: 24-7 YouTube Stream (color screen)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */3 * * *'   # tự chạy lại mỗi 3 tiếng (khớp với -t 3:00:00 bên dưới)
+    - cron: '0 */4 * * *'   # tự chạy lại mỗi 3 tiếng (khớp với -t 3:00:00 bên dưới)
 
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 175    # dưới 180 phút (3h) để job tự kết thúc gọn trước khi bị force-kill
+    timeout-minutes: 240    # dưới 180 phút (3h) để job tự kết thúc gọn trước khi bị force-kill
     steps:
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
@@ -17,10 +17,9 @@ jobs:
         env:
           STREAM_KEY: ${{ secrets.YT_STREAM_KEY }}
         run: |
-          ffmpeg -re -f lavfi -i color=c=0xFFD1A1:s=1280x720:r=30 \
+          ffmpeg -re -f lavfi -i color=c=0xFF80C7:s=1280x720:r=30 \
             -re -f lavfi -i anullsrc=cl=stereo:r=44100 \
             -c:v libx264 -preset veryfast -b:v 4500k -minrate 4500k -maxrate 4500k -bufsize 9000k \
             -x264opts nal-hrd=cbr -pix_fmt yuv420p -g 60 \
             -c:a aac -b:a 128k \
-            -t 3:00:00 \
             -f flv "rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY"
