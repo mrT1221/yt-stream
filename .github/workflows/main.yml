@@ -1,4 +1,4 @@
-name: 24-7 YouTube Stream
+name: uTube Stream
 
 on:
   workflow_dispatch:      # cho phép bấm chạy tay để test
