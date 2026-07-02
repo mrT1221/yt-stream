@@ -12,14 +12,6 @@ jobs:
     steps:
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Download video
-        run: |
-          wget -O video.mp4 "https://github.com/<username>/<repo>/releases/download/v1/video.mp4"
-
-      - name: Verify file
-        run: ls -lh video.mp4 && ffmpeg -i video.mp4 2>&1 | head -20
-
       - name: Stream to YouTube
         env:
           STREAM_KEY: ${{ secrets.YT_STREAM_KEY }}
