@@ -1,0 +1,27 @@
+name: 24-7 YouTube Stream
+
+on:
+  workflow_dispatch:      # cho phép bấm chạy tay để test
+  schedule:
+    - cron: '0 */5 * * *' # tự động chạy lại mỗi 6 tiếng
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Download video
+        run: |
+          wget -O video.mp4 "https://github.com/<username>/<repo>/releases/download/v1/video.mp4"
+
+      - name: Verify file
+        run: ls -lh video.mp4 && ffmpeg -i video.mp4 2>&1 | head -20
+
+      - name: Stream to YouTube
+        env:
+          STREAM_KEY: ${{ secrets.YT_STREAM_KEY }}
+        run: |
+          ffmpeg -re -f lavfi -i color=c=0xFF80C7:s=1280x720:r=30 -re -f lavfi -i anullsrc=cl=stereo:r=44100 -c:v libx264 -preset veryfast -b:v 4500k -minrate 4500k -maxrate 4500k -bufsize 9000k -nal-hrd cbr -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -f flv "rtmp://a.rtmp.youtube.com/live2/xh3b-kf6q-h3xp-uddr-7g3z"
