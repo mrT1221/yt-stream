@@ -1,19 +1,43 @@
-name: YouTube Stream
+name: YouTube Color
 
 on:
-  workflow_dispatch:      # cho phép bấm chạy tay để test
+  workflow_dispatch:
+  repository_dispatch:
+    types: [continue-stream]
   schedule:
-    - cron: '0 */5 * * *' # tự động chạy lại mỗi 6 tiếng
+    - cron: '0 */6 * * *'   # backup an toàn, phòng khi self-chaining lỡ fail
+
+concurrency:
+  group: youtube-stream
+  cancel-in-progress: false   # không cho job chồng lên nhau
 
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 340       # GitHub hard-kill mốc 340p, luôn phải < 360
+
     steps:
       - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - name: Stream to YouTube
+        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+
+      - name: Stream to YouTube (tự dừng êm sau 5 tiếng)
         env:
           STREAM_KEY: ${{ secrets.YT_STREAM_KEY }}
         run: |
-          ffmpeg -re -f lavfi -i color=c=0xFF80C7:s=1280x720:r=30 -re -f lavfi -i anullsrc=cl=stereo:r=44100 -c:v libx264 -preset veryfast -b:v 4500k -minrate 4500k -maxrate 4500k -bufsize 9000k -nal-hrd cbr -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -f flv "rtmp://a.rtmp.youtube.com/live2/xh3b-kf6q-h3xp-uddr-7g3z"
+          timeout --signal=SIGINT 18000 ffmpeg -re -f lavfi -i color=c=0xFFD1A1:s=1280x720:r=30 \
+            -re -f lavfi -i anullsrc=cl=stereo:r=44100 \
+            -c:v libx264 -preset veryfast -b:v 4500k -minrate 4500k -maxrate 4500k -bufsize 9000k \
+            -x264opts nal-hrd=cbr -pix_fmt yuv420p -g 60 \
+            -c:a aac -b:a 128k \
+            -f flv "rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY" || true
+          echo "Đã dừng ffmpeg êm, chờ 15s để YouTube giải phóng ingestion..."
+          sleep 10
+
+      - name: Trigger job kế tiếp
+        if: always()
+        run: |
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GH_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            -d '{"event_type":"continue-stream"}'
