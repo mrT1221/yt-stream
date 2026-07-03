@@ -24,7 +24,7 @@ jobs:
         env:
           STREAM_KEY: ${{ secrets.YT_STREAM_KEY }}
         run: |
-          timeout --signal=SIGINT 18000 ffmpeg -re -f lavfi -i color=c=0xFFD1A1:s=1280x720:r=30 \
+          timeout --signal=SIGINT 18000 ffmpeg -re -f lavfi -i color=c=0xFF80C7:s=1280x720:r=30 \
             -re -f lavfi -i anullsrc=cl=stereo:r=44100 \
             -c:v libx264 -preset veryfast -b:v 4500k -minrate 4500k -maxrate 4500k -bufsize 9000k \
             -x264opts nal-hrd=cbr -pix_fmt yuv420p -g 60 \
