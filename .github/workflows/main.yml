@@ -9,7 +9,7 @@ on:
 
 concurrency:
   group: youtube-stream
-  cancel-in-progress: false   # không cho job chồng lên nhau
+  cancel-in-progress: false   # Không cho các job chồng lên nhau làm hỏng luồng stream
 
 jobs:
   stream:
@@ -24,18 +24,31 @@ jobs:
         env:
           STREAM_KEY: ${{ secrets.YT_STREAM_KEY }}
         run: |
+          # Thiết lập bẫy (trap) để khi bạn bấm Cancel (gửi tín hiệu SIGTERM/SIGINT), 
+          # script sẽ thoát ngay lập tức thay vì chạy tiếp các lệnh dưới.
+          trap 'echo "Workflow bị hủy bởi người dùng! Dừng ngay lập tức."; exit 1' SIGTERM SIGINT
+
+          echo "▶️ Khởi động stream màu 5 tiếng..."
+          
+          # Chạy lệnh timeout, loại bỏ "|| true" để nếu bị cancel hoặc lỗi nghiêm trọng, 
+          # step sẽ trả về exit code lỗi đúng thực tế để GitHub biết đường dừng lại.
           timeout --signal=SIGINT 18000 ffmpeg -re -f lavfi -i color=c=0xFF80C7:s=1280x720:r=30 \
             -re -f lavfi -i anullsrc=cl=stereo:r=44100 \
             -c:v libx264 -preset veryfast -b:v 4500k -minrate 4500k -maxrate 4500k -bufsize 9000k \
             -x264opts nal-hrd=cbr -pix_fmt yuv420p -g 60 \
             -c:a aac -b:a 128k \
-            -f flv "rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY" || true
-          echo "Đã dừng ffmpeg êm, chờ 15s để YouTube giải phóng ingestion..."
+            -f flv "rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY"
+
+          echo "✅ Đã hoàn thành 5 tiếng stream mượt mà. Chờ 10s bàn giao..."
           sleep 10
 
       - name: Trigger job kế tiếp
-        if: always()
+        # CHỐT CHẶN QUAN TRỌNG: Chỉ chạy khi job trước THÀNH CÔNG HOÀN TOÀN.
+        # Nếu bạn bấm nút "Cancel workflow", trạng thái bước trước sẽ là cancelled, 
+        # bước này sẽ bị BỎ QUA (Skipped) và luồng lặp tự động dừng hẳn.
+        if: success()
         run: |
+          echo "🔄 Đang gọi API để kích hoạt job tiếp theo..."
           curl -s -X POST \
             -H "Authorization: token ${{ secrets.GH_PAT }}" \
             -H "Accept: application/vnd.github+json" \
