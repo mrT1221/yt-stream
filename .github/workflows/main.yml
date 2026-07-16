@@ -48,7 +48,7 @@ jobs:
 
             # Tối ưu lại FFmpeg cho ảnh tĩnh: Giảm khung hình xuống 20fps để nhẹ CPU, giữ bitrate ổn định
             timeout --signal=SIGINT "$REMAINING" ffmpeg -re -loop 1 -i "$IMAGE_PATH" \
-              -f lavfi -i anullsrc=cl=stereo:r=44100 \
+             -re -f lavfi -i anullsrc=cl=stereo:r=44100 \
               -c:v libx264 -preset ultrafast -tune stillimage \
               -b:v 4000k -maxrate 4000k -bufsize 8000k \
               -pix_fmt yuv420p -g 40 -r 20 \
